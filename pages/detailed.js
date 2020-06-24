@@ -1,46 +1,47 @@
-import React from "react";
+import React, { useState } from "react";
 import Head from "next/head";
-import { Row, Col, Breadcrumb, Affix } from "antd";
+import { Row, Col, Affix, Icon, Breadcrumb } from "antd";
+import axios from "axios";
 import Header from "../components/Header";
 import Author from "../components/Author";
 import Advert from "../components/Advert";
 import Footer from "../components/Footer";
-import "../static/style/pages/comm.css";
+import marked from "marked";
+import hljs from "highlight.js";
+import Tocify from "../components/tocify.tsx";
+import "highlight.js/styles/github.css";
+import "highlight.js/styles/monokai-sublime.css";
 import "../static/style/pages/detailed.css";
-import MarkNav from "markdown-navbar";
-import "markdown-navbar/dist/navbar.css";
-import axios from "axios";
 import servicePath from "../config/apiUrl";
 
-import marked from "marked";
-import highlight from "highlight.js";
-import "highlight.js/styles/monokai-sublime.css";
-
-import {
-  ProfileOutlined,
-  SmileOutlined,
-  HeartOutlined,
-} from "@ant-design/icons";
-const Detail = (detail) => {
+const Detailed = (props) => {
+  const tocify = new Tocify();
   const renderer = new marked.Renderer();
+
+  renderer.heading = function (text, level, raw) {
+    const anchor = tocify.add(text, level);
+    return `<a id="${anchor}" href="#${anchor}" class="anchor-fix"><h${level}>${text}</h${level}></a>\n`;
+  };
+
   marked.setOptions({
     renderer: renderer,
-    gfm: true, // 类似github的风格
-    pedantic: false, // 允许容错
-    sanitize: false, // 不忽略html标签
-    tables: true, // 允许github上的表格
-    breaks: false, // 换行符
-    smartLists: true, // 是否使用默认的列表风格
+    gfm: true,
+    pedantic: false,
+    sanitize: false,
+    tables: true,
+    breaks: false,
+    smartLists: true,
     smartypants: false,
     highlight: function (code) {
-      return highlight.highlightAuto(code).value;
+      return hljs.highlightAuto(code).value;
     },
   });
-  let html = marked(detail.artical);
+  let html = marked(props.article_content);
+
   return (
-    <React.Fragment>
+    <>
       <Head>
-        <title>List</title>
+        <title>博客详细页</title>
       </Head>
       <Header />
       <Row className="comm-main" type="flex" justify="center">
@@ -51,62 +52,60 @@ const Detail = (detail) => {
                 <Breadcrumb.Item>
                   <a href="/">首页</a>
                 </Breadcrumb.Item>
-                <Breadcrumb.Item>
-                  <a href="/">视频列表</a>
-                </Breadcrumb.Item>
-                <Breadcrumb.Item>xxx</Breadcrumb.Item>
+                <Breadcrumb.Item>视频列表</Breadcrumb.Item>
+                <Breadcrumb.Item>xxxx</Breadcrumb.Item>
               </Breadcrumb>
             </div>
+
             <div>
-              <div className="detailed-title">React学习冲啊冲-serlin</div>
-              <div className="list-icon">
+              <div className="detailed-title">文章详情页面文章标题</div>
+              <div className="list-icon center">
                 <span>
-                  <ProfileOutlined />
-                  2020-05-20
+                  <Icon type="calendar" /> 2019-06-28
                 </span>
                 <span>
-                  <SmileOutlined />
-                  文章
+                  <Icon type="folder" /> 视频教程
                 </span>
                 <span>
-                  <HeartOutlined /> 2222人
+                  <Icon type="fire" /> 5498人
                 </span>
               </div>
-              <div className="detailed-content">
-                <ReactMarkdown source={markdown} escapeHtml={false} />
-              </div>
+              <div
+                className="detailed-content"
+                dangerouslySetInnerHTML={{ __html: html }}
+              ></div>
             </div>
           </div>
         </Col>
 
         <Col className="comm-right" xs={0} sm={0} md={7} lg={5} xl={4}>
+          {/* 个人信息 */}
           <Author />
+          {/* 广告 */}
           <Advert />
+          {/* 目录 */}
           <Affix offsetTop={5}>
             <div className="detailed-nav comm-box">
               <div className="nav-title">文章目录</div>
-              <MarkNav className="article-menu" source={html} ordered={false} />
+              <div className="toc-list">{tocify && tocify.render()}</div>
             </div>
           </Affix>
         </Col>
       </Row>
       <Footer />
-    </React.Fragment>
+    </>
   );
 };
 
-Detail.getInitialProps = async (ctx) => {
-  let id = ctx.query.id;
-  const promises = new Promise((resolve, reject) => {
-    try {
-      axios(servicePath.getArticleById + id).then((res) => {
-        console.log(res);
-        resolve(res.data.data[0]);
-      });
-    } catch (error) {
-      reject(error);
-    }
+Detailed.getInitialProps = async (context) => {
+  let id = context.query.id;
+  const promise = new Promise((resolve) => {
+    axios(servicePath.getArticleById + id).then((res) => {
+      resolve(res.data.data[0]);
+    });
   });
-  return await promises;
+
+  return await promise;
 };
-export default Detail;
+
+export default Detailed;
